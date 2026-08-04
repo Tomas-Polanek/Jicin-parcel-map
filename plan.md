@@ -71,19 +71,35 @@ vlastnictví bude v README uvedeno jako vědomé, zdůvodněné rozhodnutí, ne 
 ## Rozhodnutá konfigurace (shrnutí)
 
 - **Backend:** čisté PHP, vlastní malý router, PDO + SQLite.
-- **Data:** jednorázově stažená z ČÚZK WFS INSPIRE **CPX** (`services.cuzk.gov.cz/wfs/inspire-cpx-wfs.asp`,
-  feature type `CadastralParcel`), uložená v SQLite.
+- **Data:** jednorázově stažená z ČÚZK WFS INSPIRE **CPX**
+  (`services.cuzk.gov.cz/wfs/inspire-cpx-wfs.asp`), uložená v SQLite. Konkrétně přes uložený dotaz
+  **`GetSpatialDataSet`**, jeden dotaz na katastrální území (`DataSetIdCode=CPX.SD.<kód k.ú.>`),
+  v **EPSG:4258**. Zdůvodnění a přijaté nevýhody viz `roadmap.md` (záznam 2026-08-04 13:20).
 - **Frontend:** vanilla JS (případně TS), Leaflet, dotazy na backend podle bbox výřezu mapy.
 - **Mapový podklad:** OpenStreetMap.
-- **Rozsah (4 katastrální území, potvrzeno):**
-  - **Jičín** (12,06 km²) — povinné minimum, samotné město.
-  - **Popovice u Jičína** (4,13 km²) — přímo sousedí, součást obce Jičín.
-  - **Robousy** (7,29 km²) — přímo sousedí, součást obce Jičín.
-  - **Valdice** (0,9 km²) — přímo sousedí, samostatná obec (na rozdíl od předchozích dvou jde
+- **Rozsah (4 katastrální území, potvrzeno; kódy k.ú. ověřeny přes `GetZoningByName`):**
+  - **Jičín** — kód **659541** (12,06 km²) — povinné minimum, samotné město.
+  - **Popovice u Jičína** — kód **725838** (4,13 km²) — přímo sousedí, součást obce Jičín.
+  - **Robousy** — kód **740225** (7,29 km²) — přímo sousedí, součást obce Jičín.
+  - **Valdice** — kód **776530** (0,9 km²) — přímo sousedí, samostatná obec (na rozdíl od předchozích dvou jde
     o skutečně nezávislé katastrální území, ne jen část Jičína) — vhodné pro ověření, že aplikace
     zvládá více nezávislých k.ú. najednou.
   - Souhrnná plocha ~24,4 km² — dost na smysluplný test výkonu, málo na to, aby to bránilo
     dokončení v časovém rozpočtu (cíl #22).
+- **Stahování (rozhodnuto 2026-08-04):** zipované sady (`zipped=true`), ~10,5 MB proti ~318 MB
+  nezipovaně. Vyžaduje rozšíření `zip` v `php.ini` (patří do README mezi předpoklady).
+- **Hotová SQLite databáze se commitne do repozitáře** spolu s importním skriptem, aby recenzent
+  spustil aplikaci jen přes `php -S` bez stahování dat. Vědomý kompromis (binární soubor v gitu),
+  zdůvodnění patří do README.
+- **České popisky `landType`/`landUse` (rozhodnuto 2026-08-04):** stahují se při importu z registru
+  číselníků ČÚZK (`services.cuzk.cz/registry/codelist/{LandTypeValue,LandUseValue}?format=json`),
+  nepíšou se ručně — znění je tak oficiální, ne náš překlad.
+- **Objem dat (naměřeno 2026-08-04):** 17 256 parcel ve 4 k.ú. (Jičín 12 284, Robousy 2 444,
+  Popovice 1 475, Valdice 1 053).
+- **Jazyková konvence (rozhodnuto 2026-08-04):** identifikátory (proměnné, funkce, tabulky,
+  sloupce) **anglicky**, komentáře **česky**, texty v UI **česky**, dokumentace **česky**.
+  Hranice vede mezi kódem a souvislým textem, ne napříč projektem. Zdůvodnění viz `roadmap.md`
+  (záznam 2026-08-04 13:35); do README patří krátký odstavec s vysvětlením.
 - **Vlastnická data:** nejsou součástí info panelu — zdůvodněno v README.
 - **Souřadnicový systém:** ČÚZK vrací geometrii v S-JTSK (EPSG:5514), Leaflet/OSM potřebují WGS84
   (EPSG:4326). Řešeno požadavkem `srsName=EPSG:4326` přímo ve WFS dotazu (server přepočet udělá
@@ -91,13 +107,25 @@ vlastnictví bude v README uvedeno jako vědomé, zdůvodněné rozhodnutí, ne 
   stažení, že to CPX server skutečně podporuje; pokud ne, náhradní plán je přepočet po straně
   klienta/skriptu.
 
+## Vyřešeno 2026-08-04 (ověřeno reálnými dotazy na CPX)
+
+- **Souřadnicový systém potvrzen:** `srsName=EPSG:4326` server podporuje, ruční přepočet ze S-JTSK
+  odpadá. Pozor na dvě pasti zjištěné při ověřování: feature type musí být s prefixem
+  (`cp-ext:CadastralParcel`) a `bbox` se zadává v pořadí lon,lat — v obou případech vrací server
+  při chybě HTTP 200 a prázdný výsledek, ne chybovou hlášku.
+- **Unikátní klíč parcely:** `cp:nationalCadastralReference` (např. `659541-1185/3`, u stavebních
+  `659541-st. 3047`). Řetězec sám nese kód k.ú. + parcelní číslo + typ parcely, tedy přesně tu
+  trojici, která dává v katastru jedinečnost. Ověřeno na 9 028 parcelách: jedinečné, zatímco
+  samotné parcelní číslo jedinečné není. Zdůvodnění výběru viz `roadmap.md`.
+
 ## Zbývá doladit (další session, před psaním kódu)
 
 - Při reálném stažení dat z CPX vizuálně/datově potvrdit, že hranice zvolených 4 k.ú. skutečně
   na sebe navazují tak, jak předpokládá tento plán (odhad zatím z popisných zdrojů, ne z geometrie).
-- Rozhodnout schéma unikátního klíče parcely v SQLite — parcelní číslo samo o sobě není v katastru
-  jedinečné, jedinečnost dává až kombinace katastrální území + parcelní číslo + typ parcely
-  (stavební/pozemková). Řešit jako implementační rozhodnutí podle `CLAUDE.md`, ne mimochodem.
+*(Prázdné — všechna rozhodnutí, která si tento plán vytkl před implementací, jsou uzavřená.
+Schéma databáze rozhodnuto 2026-08-04, viz `roadmap.md`, záznam 14:40. Zbývá už jen jedno
+ověření, které nejde udělat dřív než nad hotovou mapou: vizuálně potvrdit, že zvolená 4 k.ú.
+na sebe skutečně navazují.)*
 
 ## Způsob spolupráce s Claude Code (dohodnuto)
 
