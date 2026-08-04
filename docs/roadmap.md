@@ -538,6 +538,130 @@ a existující blok `permissions` zůstal zachován.
 
 ---
 
+## [2026-08-04 16:55] – Tomáš (provedl) / Claude (navedl a zapsal)
+
+**Co se dělo:** Zapnuto rozšíření `zip` v `C:\php\php.ini` (řádek 949, odkomentováno
+`;extension=zip`). Ověřeno přes `php -m`, `zip` se načítá. Tím je splněn poslední přípravný bod
+ze seznamu "Co dál" a prostředí je kompletní. Aplikační kód zatím nepsán.
+
+**Rozhodnutí a proč:**
+- **Způsob práce v implementační fázi: kód píše Tomáš, Claude vysvětluje a reviduje**, místo
+  dřívější představy, že Claude píše a Tomáš čte. Rozhodl Tomáš po diskuzi. Důvod: plánovací fáze
+  (~4 h) vybudovala znalost *proč*, ale ne *jak* — čtení odsouhlaseného kódu a jeho samostatné
+  napsání jsou různé dovednosti a u pohovoru se počítá ta druhá (možnost, že bude vyzván kód na
+  místě upravit). Zásada, kterou Tomáš formuloval sám: standard je **vlastnictví, ne autorství** —
+  stejný princip, na kterém podle zadavatele stojí i práce týmu Viagem s Claude Max (nástroj píše,
+  odpovědnost nese člověk, který to spustil).
+- Praktické dělení: mechanické jednorázové části (parsování GML) může sepsat Claude a projít je
+  s Tomášem řádek po řádku; hodnocené a demonstrované části (PHP endpointy, frontend) píše Tomáš.
+  Pravidlo: co Tomáš neumí vysvětlit vlastními slovy, to se neodevzdává.
+- Zapsáno i do trvalé paměti Claude (mimo repozitář), aby se dohoda neuvolnila v průběhu delší
+  session — stejné riziko, na které upozorňuje i Pravidlo 1 v `CLAUDE.md`.
+
+**Stav repozitáře:** Beze změny co do aplikačního kódu. PHP prostředí je nyní kompletní
+(`pdo_sqlite`, `sqlite3`, `xmlreader`, `zlib`, `dom`, `SimpleXML`, `zip`).
+
+---
+
+## [2026-08-04 17:45] – Tomáš (rozhodnutí a kód) / Claude (ověření a zápis)
+
+**Co se dělo:** Založena struktura projektu, `.gitignore` a kostra `import.php` (první aplikační
+kód — píše ho Tomáš). Před psaním stahovací části ověřen reálnými dotazy přesný tvar URL pro
+`GetSpatialDataSet`, protože `plan.md` ani dřívější záznamy si nepoznamenaly konkrétní podobu
+parametrů.
+
+**Rozhodnutí a proč:**
+- **Rozvržení projektu s odděleným web rootem** — `public/` (jediná složka vystavená serverem),
+  `src/`, `db/`, `data/`, `docs/`. Spouští se `php -S localhost:8000 -t public`. Důvod: bez
+  odděleného rootu je `db/parcels.sqlite` volně stažitelná přes HTTP a `import.php` spustitelný
+  z prohlížeče. Cena: reviewer musí použít přepínač `-t public`, patří proto na první řádek README.
+- **Plánovací soubory přesunuty do `docs/`**, `CLAUDE.md` a `README.md` zůstávají v rootu.
+  `CLAUDE.md` se z jiného umístění vůbec nenačte (Claude Code ho hledá v kořeni projektu), README
+  vykresluje GitHub jen z kořene — u obou jde o technické omezení, ne o preferenci.
+- **Seznam katastrálních území jako konstanta `ZONINGS` přímo v `import.php`**, ne konfigurační
+  soubor ani dotaz na ČÚZK za běhu. Důvod: žádný jiný konzument seznam nepotřebuje (API čte území
+  z tabulky `zonings`), takže konfigurační soubor by byl abstrakce pro jediného volajícího.
+  Runtime dotaz by navíc přidal síťovou chybovou cestu k datům, která se prakticky nemění.
+- **`declare(strict_types=1)`** — import převádí text na čísla (`areaValue`, souřadnice) a tiché
+  typové konverze jsou přesně to místo, kde by chyba prošla neviditelně.
+- **`.gitignore` chrání i zadávací PDF** (bez lomítka, tj. na jakékoliv úrovni) — dřív bylo jen
+  „nezacommitnuté", což je stav, ne ochrana; jeden `git add .` by ho poslal do veřejného repozitáře.
+
+**Ověřeno reálnými dotazy (opravuje dřívější záznamy):**
+- **Správný tvar identifikátoru je `DataSetIdCode=CPX.SD.<kód k.ú.>`**, např. `CPX.SD.659541`.
+  Dřívější záznam z 13:20 uváděl jen kódy území — s holým `659541` server odpoví HTTP 400.
+- **`DataSetIdNamespace` je nepovinný** — s `CZ-00025712-CUZK_CPX` i bez něj vrací server totéž.
+- **Dokumentace stored query je zavádějící:** popisuje tvar `AD.SD.[kód]` a tvrdí, že sady jsou
+  děleny „po obcích". Obojí je text převzatý ze služby pro adresní místa (AD); pro CPX platí
+  prefix `CPX.` a dělení po katastrálních územích. Ověřeno testem obou variant.
+- **Chybová hláška serveru lže:** na neplatný `DataSetIdCode` vrací
+  `Unsupported CRS for specified DataSetIdCode`, přestože CRS je platné. Kdo hlášce uvěří, řeší
+  souřadnicové systémy místo identifikátoru. Už počtvrté tento server hlásí něco jiného, než je
+  skutečná příčina (dřív: chybějící prefix, pořadí os, neenkódovaná diakritika).
+- **EPSG:4258 pro předpřipravené sady funguje** — rozhodnutí z 13:20 potvrzeno, ne vyvráceno.
+- **Soubor uvnitř zipu se jmenuje `<kód>.xml`, ne `.gml`** (např. `776530.xml`, 17 MB rozbaleno).
+  Obsah je GML, ale kód hledající uvnitř archivu `*.gml` by nenašel nic.
+- Naměřené velikosti zipů: Jičín 7,53 MB, Robousy 1,29 MB, Popovice 0,73 MB, Valdice 0,53 MB.
+
+**Zjištění k prostředí:** rozšíření **`curl` v PHP zapnuté není** (na rozdíl od `zip`, `sqlite3`,
+`xmlreader`), `allow_url_fopen` je `On`. Volba způsobu stahování se tomu musí přizpůsobit —
+je to vstup do dalšího rozhodnutí, ne hotová věc.
+
+**Stav repozitáře:** `import.php` obsahuje hlavičku, `declare(strict_types=1)` a konstantu
+`ZONINGS`. Spustitelný (`php import.php` proběhne bez výstupu). Nic zatím necommitnuto.
+
+---
+
+## [2026-08-04 18:50] – Tomáš (psal kód) / Claude (vysvětloval, ověřoval, zapsal)
+
+**Co se dělo:** Napsána a odladěna celá stahovací část `import.php`. Všechna čtyři katastrální
+území se stáhnou (~9,7 MB), velikosti souhlasí s referenčním stažením přes curl. Kód psal Tomáš,
+Claude vysvětloval syntaxi po malých krocích — Tomáš PHP dosud neuměl, takže tempo bylo
+„jedna funkce = několik kroků, každý ověřený spuštěním".
+
+**Rozhodnutí a proč:**
+- **Stahování přes `file_get_contents()` + kontrola obsahu, ne `copy()` ani cURL.** Rozhodující
+  argument: server na chybný vstup vrací HTTP 400 s XML dokumentem. `copy()` by ho uložil jako
+  `.zip` a chyba by se projevila až o krok dál jako „poškozený archiv". Kontrola prvních dvou
+  bajtů (`PK`, podpis ZIP formátu) chytí problém v okamžiku vzniku a do výjimky vloží
+  prvních 200 znaků skutečné odpovědi ČÚZK. cURL zamítnut: rozšíření `curl` není zapnuté a čtyři
+  statické soubory jeho robustnost nevyužijí — méně předpokladů pro reviewera je samo o sobě
+  argument kvality.
+- **Chyby se hlásí výjimkami (`RuntimeException`), ne návratovou hodnotou `false` ani `exit()`
+  uvnitř funkce.** Jeden `try/catch` na konci skriptu obsluhuje všechny čtyři budoucí kroky
+  (stažení, rozbalení, parsování, zápis) místo čtyř samostatných větví. Funkce tak neví, jak
+  program končí, a zůstává použitelná i jinde. Návratová hodnota `false` by navíc rozbila
+  návratový typ `: string` kvůli `declare(strict_types=1)`.
+- **Sestavení URL vyčleněno do vlastní funkce `buildDatasetUrl()`.** Umožňuje URL vytisknout
+  a zkontrolovat bez síťového dotazu — u serveru, který čtyřikrát ohlásil jinou příčinu, než
+  byla skutečná, to není luxus. `downloadDataset()` tím zůstává krátká.
+- **Dotaz se skládá přes `http_build_query()`, ne spojováním řetězců.** Parametry obsahují `:`
+  a `/` (např. `storedquery_id`), které je nutné enkódovat. Ověřeno, že server enkódovanou
+  podobu (`%3A%2F%2F`) přijímá stejně jako neenkódovanou — vrací identických 529 974 bajtů.
+- **Skript vypisuje průběh** (`Jičín: data/659541.zip`) — u importu, který běží desítky sekund,
+  je tiché čekání horší než tři řádky výstupu. Chyby jdou na `STDERR` a skript končí `exit(1)`,
+  aby selhání bylo rozpoznatelné i strojově, ne jen okem.
+- **Stažené soubory se kešují** — funkce se nejdřív podívá, jestli zip už v `data/` je.
+  Opakovaný běh je okamžitý. Bez toho by každá iterace ladění parseru znamenala 9,7 MB navíc
+  z cizího serveru.
+
+**Zjištění k prostředí (patří do README mezi předpoklady):**
+- **Rozšíření `openssl` nebylo zapnuté** a bez něj PHP vůbec nezná wrapper `https` —
+  `stream_get_wrappers()` vypisoval `http`, ale ne `https`. Projeví se to hláškou
+  *„Unable to find the wrapper https"*, která nezní jako chybějící rozšíření. Zapnuto na
+  řádku 930 v `php.ini`. **Volba cURL by nepomohla** — `php_curl` potřebuje openssl pro TLS
+  úplně stejně, takže tenhle krok byl nutný tak jako tak.
+- Předpoklady pro spuštění jsou tedy: `pdo_sqlite`, `sqlite3`, `xmlreader`, `zip`, `openssl`.
+
+**Ověřeno reálným během:** čtyři zipy v `data/` — Jičín 7 531 561 B, Robousy 1 292 202 B,
+Popovice 730 826 B, Valdice 529 974 B, celkem 9,7 MB. Velikosti se shodují s referenčním
+stažením přes curl. Druhý běh skriptu je okamžitý (keš funguje).
+
+**Stav repozitáře:** `import.php` je spustitelný a dělá kompletní první krok importu.
+`data/` je ignorovaná gitem, takže stažené zipy do repozitáře nejdou. Necommitnuto.
+
+---
+
 ## Co dál (další session)
 
 - ~~Ověřit `srsName=EPSG:4326`~~ — hotovo 2026-08-04, funguje.
@@ -548,7 +672,7 @@ a existující blok `permissions` zůstal zachován.
 - ~~Rozhodnout jazykovou konvenci kódu~~ — hotovo 2026-08-04, identifikátory anglicky, zbytek česky.
 - ~~Rozhodnout zipovaně vs. nezipovaně~~ — hotovo 2026-08-04, zipovaně (`zipped=true`).
 - ~~Rozhodnout, jestli commitovat hotovou SQLite databázi~~ — hotovo 2026-08-04, ano, spolu se skriptem.
-- Zapnout `extension=zip` v `php.ini` (zatím není zapnuté).
+- ~~Zapnout `extension=zip` v `php.ini`~~ — hotovo 2026-08-04, viz záznam 16:55.
 - ~~Rozhodnout zdroj českých popisků `landType`/`landUse`~~ — hotovo 2026-08-04, registr číselníků
   ČÚZK (`?format=json`), stahuje se při importu.
 - ~~Rozhodnout schéma tabulky v SQLite~~ — hotovo 2026-08-04, viz záznam 14:40.

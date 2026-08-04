@@ -1,0 +1,12 @@
+#Stažená a rozbalená data z ČÚZK — ~318 MB, znovu je vytvoří import.php
+/data/
+
+# Systémové smetí Windows / macOS
+Thumbs.db
+.DS_Store
+
+#Zadani od Viagem - interni material
+Interview_uloha_Programator.pdf
+
+*.log
+!keep.log
