@@ -795,3 +795,94 @@ zatím se neřeší, jen je zaznamenáno, aby to nepřekvapilo později.
 
 **Stav repozitáře:** Beze změny co do aplikačního kódu (`import.php` dělá kompletní stahovací
 krok). Změněny `CLAUDE.md` a `docs/roadmap.md`, obojí necommitnuto.
+
+---
+
+## [2026-08-05 14:53] – Tomáš (rozhodnutí) / Claude (zápis)
+
+**Co se dělo:** Uzavřeno otevřené téma ze záznamu 14:26 („Tomáš uvedl, že ho PHP zdržuje").
+Změněna dohoda o tom, kdo píše kód. Zapsáno jako **Pravidlo 8** v `CLAUDE.md`. Aplikační kód
+se v této session zatím neměnil.
+
+**Rozhodnutí a proč:**
+- **Backend (PHP) píše Claude, klientskou část (JS/Leaflet) píše Tomáš.** Rozhodl Tomáš
+  s odůvodněním, že PHP neumí a nechce se ho učit uprostřed časově omezené úlohy, zatímco
+  frontend si chce napsat sám.
+- **Ne „napíšu všechno a vysvětlím na konci", ale „napíšu funkci a hned ji vysvětlím".**
+  Tomáš vybral z nabídnutých tří variant tuto. Důvod, který Claude uvedl proti odložení výkladu
+  na konec: první setkání s kódem po 500 napsaných řádcích je nejhorší možný okamžik na
+  pochopení — po funkcích je to stejně rychlé (Tomáš stejně netypuje), ale zvládnutelné.
+  Součástí dohody je, že „přepiš to jednodušeji, nerozumím tomu" je platný důvod k přepsání.
+- **Nahrazuje dohodu ze záznamu 2026-08-04 16:55** („kód píše Tomáš, Claude vysvětluje").
+  Podle pravidel tohoto souboru se starý záznam needituje — platí novější.
+- **Co se nemění:** zásada *vlastnictví, ne autorství* — co Tomáš neumí vysvětlit vlastními
+  slovy, to se neodevzdává. A Pravidlo 1: rozhodnutí (struktura funkcí, formát odpovědi,
+  ošetření chyb) se dál probírají předem, i když kód píše Claude.
+- **Vědomě přijaté riziko:** zadavatel může u pohovoru vyzvat k úpravě kódu na místě. Tuto
+  schopnost trénuje psaní, ne čtení. Riziko se zmenšuje výkladem po částech a tím, že frontend
+  — tedy část, na kterou se recenzent dívá nejdřív — píše Tomáš. Neodstraňuje se úplně.
+  Claude na riziko upozornil před rozhodnutím, Tomáš ho po vysvětlení potvrdil.
+
+**Stav repozitáře:** `import.php` beze změny (kompletní stahovací krok). Změněny `CLAUDE.md`
+a `docs/roadmap.md`, necommitnuto.
+
+---
+
+## [2026-08-05 15:14] – Claude (psal kód, viz Pravidlo 8) / Tomáš (rozhodoval)
+
+**Co se dělo:** Dokončen celý importní skript — rozbalení, parsování GML a zápis do SQLite.
+`php import.php` proběhne za 5,3 s a vytvoří `db/parcels.sqlite` (9,1 MB) se 17 256 parcelami.
+Přidán `src/Parcel.php`. První session podle Pravidla 8 (kód píše Claude a vysvětluje po
+funkcích). Před psaním předloženo 7 rozhodnutí, Tomáš vybral A/A/A, pak A/B/A/A, pak A.
+
+**Rozhodnutí a proč:**
+- **Čtení přímo z archivu přes wrapper `zip://`**, ne `ZipArchive::extractTo()`. Změřeno:
+  celý import má vrchol paměti **4 MB**, přestože rozbalený Jičín má 239 MB. Odpadá ~318 MB
+  dočasných souborů i kód na jejich úklid.
+- **Parser hybridně: `XMLReader` najde parcelu, `readOuterXml()` + `SimpleXML` ji rozeberou.**
+  Streamování drží paměť konstantní, ale samotné vytahování polí se píše proti objektu do 14 kB
+  čitelnou syntaxí, ne stavovým automatem. Zamítnut čistý `XMLReader` (dlouhý `switch`, hůř se
+  čte — kritérium #20) i `SimpleXML` nad celým souborem (239 MB do paměti).
+- **Díry v polygonech se zachovávají.** GeoJSON je vyjadřuje jako další prstence za vnějším
+  obrysem. Týká se **647 parcel v Jičíně, celkem ~10 %** — bez nich by se dvůr uvnitř budovy
+  vykreslil jako plocha.
+- **Parcela je třída `Parcel` s `readonly` vlastnostmi**, ne asociativní pole. **Tomáš přehlasoval
+  doporučení Claude** (pole = kratší cesta do SQL). Jeho varianta má reálnou výhodu: překlep
+  v názvu vlastnosti je tvrdá chyba, u pole by `$p['are_m2']` tiše propadlo jako `null` až do
+  databáze. Konstruktor se volá pojmenovanými argumenty — u 11 parametrů by prohozené
+  `minLat`/`minLon` jinak prošlo bez chyby.
+- **Opakovaný běh maže a staví databázi znovu** (ne `INSERT OR REPLACE`) — stejný příkaz musí dát
+  stejný soubor, bez řádků přeživších z dřívější vadné verze parseru.
+- **Jedna transakce na katastrální území** (4 celkem). Bez explicitní transakce potvrzuje SQLite
+  každý řádek zvlášť — u 17 256 řádků rozdíl mezi sekundami a minutami. Dělení po územích, aby
+  chyba na posledním území nezahodila práci na předchozích.
+- **Nedostupný registr číselníků shodí celý import** (varianta A). Databáze, která by se
+  „úspěšně" naimportovala a v info panelu ukazovala `BuiltUpArea` místo „Zastavěná plocha a
+  nádvoří", je horší výsledek než hlasité selhání, které jde zopakovat.
+
+**Ověřeno reálným během (ne odhadem):**
+- 17 256 parcel = přesně součet zaznamenaný 2026-08-04, tedy nic se cestou neztratilo.
+- **0 osiřelých kódů** — každý `land_type` i `land_use` má popisek v `codelist_values`.
+- **0 vadných obalových obdélníků** (převrácených nebo mimo ČR) — kontrola, že prohození
+  lat/lon proběhlo správně. Souřadnice v GeoJSON vycházejí lon-first (`15.38…, 50.45…`).
+- Dotaz na mapový výřez: **5 632 parcel za 0,5 ms** — náhrada R-Tree čtyřmi sloupci a B-tree
+  indexem je pro tento objem dostatečná (potvrzení rozhodnutí z 2026-08-04 14:40).
+- Výsledná databáze má **9,1 MB**, ne 20–40 MB odhadovaných 2026-08-04 — argument pro její
+  commitnutí je tedy silnější, než se čekalo.
+
+**Zjištění po cestě:**
+- **Element parcely je `cp-ext:CadastralParcel`**, ne `cp:CadastralParcel`. Špatný prefix nevrátí
+  chybu, jen 0 nalezených prvků — popáté stejný vzorec tichého selhání u těchto dat.
+- **`landUse` chybí u ~74 % parcel, a je to v pořádku.** Ověřeno na Valdicích: 241 hodnot
+  s `xlink:href` + 812 s `xsi:nil="true"` = 1 053. Parser vrátil přesně 812 `null` — nejde tedy
+  o chybu parsování, ale o skutečný stav dat (ČÚZK u těchto parcel způsob využití nevede).
+- **Registr číselníků vydává `id` na hostiteli `services.cuzk.gov.cz`, zatímco GML odkazuje na
+  `services.cuzk.cz`.** Kód spojující obě strany podle celé URL by nenašel ani jednu shodu.
+  Proto se na obou stranách bere `basename()`, tedy jen koncová část za lomítkem.
+- Číselník nese i úřední číselný kód v poli `additionalInformation` (např. `111` pro ornou půdu).
+  Zatím se neukládá — není pro co, přidá se, až bude důvod.
+
+**Stav repozitáře:** `import.php` je kompletní a spustitelný (`php import.php`, 5,3 s).
+Nový `src/Parcel.php`. `db/parcels.sqlite` vytvořena, zatím **není** v gitu — commit databáze
+je samostatné rozhodnutí (padlo 2026-08-04, ale zatím neprovedeno). Necommitnuto: `CLAUDE.md`,
+`docs/roadmap.md`, `import.php`, `src/`, `db/`.
