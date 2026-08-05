@@ -690,3 +690,33 @@ stažením přes curl. Druhý běh skriptu je okamžitý (keš funguje).
 - Do README doplnit vědomé rozhodnutí o commitnuté SQLite databázi (viz záznam 2026-08-04 13:50).
 - Do README doplnit `extension=zip` mezi předpoklady (viz záznam 2026-08-04 13:50).
 - Vizuálně ověřit sousednost 4 k.ú. nad hotovou mapou.
+
+---
+
+## [2026-08-05 14:10] – Claude (asistováno, příkazy spouštěl Tomáš)
+
+**Co se dělo:** Reorganizace gitových větví na žádost Tomáše. Cíl: čistý `main` jen s funkčním
+kódem (bez Claude spolupráce) a oddělená pracovní větev `claude` se vším (funkční kód + `plan.md`,
+`roadmap.md`, `CLAUDE.md`, `.claude/`). Aplikační kód se neměnil, šlo čistě o strukturu
+repozitáře. Příkazy spouštěl Tomáš ve svém terminálu, Claude radil krok po kroku a po každé dávce
+ověřoval stav.
+
+**Rozhodnutí a proč:**
+- `claude` = původní `main` jen přejmenovaný (`git branch -m`), aby si zachoval plnou historii
+  a zůstal pracovní větví, kde Claude soubory fyzicky existují na disku (potřebné pro spolupráci).
+- `main` postaven jako nová orphan větev s jediným commitem (`4e025c9`) místo přepisu historie
+  (filter-branch/filter-repo) — jednodušší, bezpečnější a lépe obhajitelné: „main = odevzdávka,
+  spolupráce žije na claude". `git filter-repo` navíc nebyl k dispozici.
+- Před zásahem vytvořena pojistná větev `backup-2026-08-05`, aby šlo cokoliv vrátit.
+- Vše provedeno jen lokálně, bez pushe — push na GitHub (oddělit `claude` od `origin/main`
+  a `main` poslat force, protože historie se rozešla) se nechává na Tomáše po odsouhlasení.
+- Prázdné složky (`db/`, `src/`, `public/api/`) se do `main` nepřenesly — git neumí sledovat
+  prázdné adresáře; `.gitkeep` zatím nepřidán (odloženo, do rozhodnutí).
+
+**Poznámka:** Zdánlivé „rozpracované změny" v `import.php`/`.gitignore`, které hlásil
+Linux-sandbox, byly jen rozdíl konců řádků (CRLF vs LF), ne obsahové úpravy — Windows git
+(`autocrlf`) hlásí `working tree clean`. Žádný kód se neztratil.
+
+**Stav repozitáře:** `main` = 1 commit (`4e025c9`), jen `.gitignore`, `README.md`, `import.php`.
+`claude` = plná historie (`69748c5`), všechny soubory. `backup-2026-08-05` drží původní stav.
+Spustitelnost beze změny (šlo jen o git strukturu, ne o kód).
