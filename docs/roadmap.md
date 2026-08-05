@@ -662,6 +662,53 @@ stažením přes curl. Druhý běh skriptu je okamžitý (keš funguje).
 
 ---
 
+## [2026-08-05 14:26] – Tomáš (rozhodnutí a provedení) / Claude (ověření a zápis)
+
+**Co se dělo:** Tomáš rozdělil repozitář na dvě větve, aby odevzdávaný `main` neobsahoval
+soubory řídící spolupráci s Claude. Podnětem byl dojem, že Claude je u commitů veden jako
+spoluautor. Před zásahem to Claude ověřil v gitu — **nebyla to pravda**: všechny tři původní
+commity mají v poli author i committer výhradně `Tomas-Polanek`, a `%(trailers)` je u všech
+tří prázdný, tedy žádný `Co-Authored-By`. Claude se v repozitáři objevoval jen **obsahem
+souborů** — `CLAUDE.md` v kořeni, `.claude/settings.json`, a hlavně `docs/roadmap.md`, jehož
+záznamy jsou hlavičkovány `– Claude` a který se mění v každém commitu, takže "Claude" byl
+vidět v diffu každého commitu. Rozdělení větví tedy neřeší autorství (to bylo od začátku
+Tomášovo), ale **vzhled odevzdávaného repozitáře**. Aplikační kód se v této session nepsal.
+
+**Rozhodnutí a proč:**
+- **Dvě větve místo smazání repozitáře.** Původní úvaha byla smazat GitHub repozitář celý a
+  založit znovu. Zvoleno rozdělení: `main` = čistý deliverable (`.gitignore`, `README.md`,
+  `import.php`), `claude` = pracovní větev se vším včetně `CLAUDE.md` a `docs/`. Důvod: cíl #16
+  ze zadání (krátký zápisník rozhodnutí) a hodnoticí kritérium #17 (postup a zdůvodnění) stojí
+  přímo na obsahu `roadmap.md` — smazáním by se ztratil podklad k tomu, co zadavatel hodnotí
+  jako první. Rozdělení splní obojí: `main` nevypadá jako přepis session, materiál pro zápisník
+  zůstává dohledatelný.
+- **Commity do `main` dělá výhradně Tomáš.** Claude commituje jen do větve `claude`. Je to
+  zpřísnění Pravidla 5 (`CLAUDE.md`) — dosud Claude směl commitovat po dotazu, nově do `main`
+  nesmí vůbec.
+- **Historie větví je rozpojená** — `main` byl založen jako nový commit (`4e025c9`), ne jako
+  potomek původní historie. Praktický důsledek: `git merge claude` do `main` by přitáhl i
+  `docs/` a `CLAUDE.md`, tedy přesně to, co tam nemá být. Obsah se do `main` přenáší kopií
+  souboru a vlastním commitem, ne merge.
+- **Původní historie zachována ve větvi `backup-2026-08-05`** — nic se nemazalo nenávratně.
+- **Transparentnost se nemění.** Tomáš uvede použití Claude na pohovoru ústně; cílem není
+  použití skrýt, ale aby repozitář četl jako pracovní výsledek, ne jako záznam konverzace.
+
+**Zjištěná otevřená vada (neopraveno):** `git config user.email` je nastaven na
+`tomaspolane1@gmail.com`, chybí `k` — správně `tomaspolanek1@gmail.com`. GitHub páruje commity
+k účtu podle e-mailu, takže commity se k Tomášovu profilu nepřipojují (šedý avatar, nepočítají
+se do příspěvků). Týká se i nového `main` commitu. Oprava je rozhodnutí Tomáše, ne mechanická
+oprava překlepu — starší commity by bylo nutné přepsat, nebo nechat být.
+
+**Otevřené téma z této session:** Tomáš uvedl, že ho PHP zdržuje. Změna backendu ale není
+možná — zadání ho určuje výslovně (cíl #4, "Backend musí být v PHP"). Řešení se hledá v dělbě
+práce uvnitř PHP, ne mimo něj; rozhodnutí zatím nepadlo.
+
+**Stav repozitáře:** `main` (= `origin/main`) obsahuje `.gitignore`, `README.md` (prázdný) a
+`import.php`. Větev `claude` navíc `CLAUDE.md`, `.claude/settings.json`, `docs/plan.md`,
+`docs/roadmap.md`. Aplikační kód beze změny — `import.php` dělá kompletní stahovací krok.
+
+---
+
 ## Co dál (další session)
 
 - ~~Ověřit `srsName=EPSG:4326`~~ — hotovo 2026-08-04, funguje.
@@ -720,3 +767,31 @@ Linux-sandbox, byly jen rozdíl konců řádků (CRLF vs LF), ne obsahové úpra
 **Stav repozitáře:** `main` = 1 commit (`4e025c9`), jen `.gitignore`, `README.md`, `import.php`.
 `claude` = plná historie (`69748c5`), všechny soubory. `backup-2026-08-05` drží původní stav.
 Spustitelnost beze změny (šlo jen o git strukturu, ne o kód).
+
+---
+
+## [2026-08-05 14:44] – Tomáš (zadání pravidla) / Claude (zápis)
+
+**Co se dělo:** Tomáš zadal dohodu o dělbě práce v gitu a Claude ji zapsal jako **Pravidlo 7**
+do `CLAUDE.md`. Aplikační kód se neměnil.
+
+**Rozhodnutí a proč:**
+- **Pravidlo 7:** Claude pracuje výhradně na větvi `claude`; `main` patří Tomášovi (Claude ji
+  nepřepíná, needituje, nemerguje do ní, nepushuje). Všechny commity a pushe dělá Tomáš sám,
+  Claude může nanejvýš upozornit, že je vhodná chvíle na commit.
+- **Zapsáno do `CLAUDE.md`, ne jen do `roadmap.md`.** `CLAUDE.md` je v kontextu každé session
+  automaticky, `roadmap.md` ne — dohoda, která se má držet i za měsíc, patří tam, kde ji Claude
+  uvidí bez hledání. Stejná úvaha jako u Pravidla 6 (skill vs. `CLAUDE.md`).
+- **Formulováno jako doplněk Pravidla 5, ne jeho náhrada.** Pravidlo 5 říká „neptej se — nedělej
+  commit"; Pravidlo 7 přidává „a do `main` ani po zeptání". Dosavadní zpřísnění zapsané zatím
+  jen v záznamu z 14:26 tím dostává trvalé místo.
+- **Rozšíření oproti záznamu z 14:26:** tam bylo omezení jen na `main`, nově Tomáš dělá **všechny**
+  commity, i na větvi `claude`. Důvod je stejný jako u způsobu práce v implementační fázi
+  (záznam 2026-08-04 16:55): standard je vlastnictví, ne autorství.
+
+**Zjištění po cestě:** větev `claude` je vůči `origin/main` **ahead 4, behind 1** — historie
+větví se rozešla (viz záznam 14:26, `main` je orphan commit). Sjednocení je operace Tomáše,
+zatím se neřeší, jen je zaznamenáno, aby to nepřekvapilo později.
+
+**Stav repozitáře:** Beze změny co do aplikačního kódu (`import.php` dělá kompletní stahovací
+krok). Změněny `CLAUDE.md` a `docs/roadmap.md`, obojí necommitnuto.
