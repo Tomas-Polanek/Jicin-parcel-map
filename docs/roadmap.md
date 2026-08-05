@@ -886,3 +886,61 @@ funkcích). Před psaním předloženo 7 rozhodnutí, Tomáš vybral A/A/A, pak 
 Nový `src/Parcel.php`. `db/parcels.sqlite` vytvořena, zatím **není** v gitu — commit databáze
 je samostatné rozhodnutí (padlo 2026-08-04, ale zatím neprovedeno). Necommitnuto: `CLAUDE.md`,
 `docs/roadmap.md`, `import.php`, `src/`, `db/`.
+
+---
+
+## [2026-08-05 15:38] – Claude (psal kód, viz Pravidlo 8) / Tomáš (rozhodoval)
+
+**Co se dělo:** Napsána celá serverová část API — `public/router.php`, `public/api/index.php`,
+`src/Database.php`, `src/parcels.php`. Tři endpointy běží a jsou otestované reálnými dotazy přes
+`php -S`. Před psaním předložena 4 rozhodnutí, Tomáš vybral A/A/A/A. Frontend zatím nevznikl —
+podle Pravidla 8 ho píše Tomáš.
+
+**Rozhodnutí a proč:**
+- **Jeden vstupní bod `public/api/index.php` s výslovnou tabulkou rout** (`switch` nad cestou),
+  ne soubor na endpoint. Odpovídá tomu, co si `plan.md` vytkl v cíli #4 („malý vlastní router,
+  několik explicitních route"). Cena: vestavěný server neumí sám poslat požadavek na neexistující
+  cestu, takže se spouští s `public/router.php` — **patří do README na první řádek**:
+  `php -S localhost:8000 -t public public/router.php`.
+- **Mapový endpoint vrací jen geometrii a `ref`, `properties` zůstávají prázdné.** Popisky se
+  dotahují až kliknutím z `/api/parcel`. Drží nejčastější dotaz mimo JOIN na číselníky a nenafukuje
+  odpověď textem, který uživatel čte vždy jen pro jednu parcelu.
+- **Nad limitem výřezu se nevrací nic, jen příznak `zoom_in: true`.** Zamítnuto posílání všeho
+  (6,75 MB a 17 256 polygonů na jeden posun mapy = přesně sekání z kritéria #19) i zjednodušování
+  geometrie při malém zoomu (Douglas–Peucker je vlastní geometrický kód, který by se musel psát
+  a obhajovat, a hranice parcel jsou přitom smysl celé aplikace — patří do README jako „co dál").
+- **Klíč parcely jde v detail endpointu jako query parametr** (`/api/parcel?ref=...`), ne jako část
+  cesty. Řeší to otevřený problém zapsaný 2026-08-04: `659541-st. 2344` obsahuje mezeru a tečku.
+  **Ověřeno reálným dotazem** — `776530-st. 96/7` projde celou cestou od URL po JSON odpověď.
+- **Chybný vstup vrací HTTP 400 s JSON popisem, ne prázdný výsledek.** Vědomá reakce na to, čím
+  nás celou dobu mátl server ČÚZK — tichá prázdná odpověď na chybný dotaz. Naše API to dělat nemá.
+- **Odpověď na výjimku je „Chyba serveru." a nic víc**, skutečná výjimka jde do `error_log`.
+  Do prohlížeče nepatří SQL ani cesty na disku.
+- **Skládání GeoJSON spojováním řetězců**, ne `json_encode()` nad velkým polem — geometrie je
+  v databázi už jako hotový GeoJSON, takže by ji `json_encode()` musel rozebrat a znovu složit.
+  Potvrzení rozhodnutí ze schématu (2026-08-04 14:40).
+
+**Naměřeno (localhost, po zahřátí):**
+
+| výřez | parcel | velikost | odpověď |
+|---|---|---|---|
+| 0,4 × 0,4 km | 473 | 0,24 MB | 4 ms |
+| 0,7 × 0,7 km | 1 136 | 0,57 MB | 6 ms |
+| 1,0 × 1,0 km | 2 408 | 1,12 MB | 10 ms |
+| nad limitem | — | `zoom_in` | 1 ms |
+
+Sestavení celé sady 17 256 prvků trvá 8 ms, samotný SQL dotaz 31 ms — server tedy ani zdaleka
+není úzké hrdlo.
+
+**Otevřený bod, vědomě nedořešený:** konstanta `MAX_BBOX_AREA = 0.0002` (výřez do ~1,2 km) je
+**provizorní**. Skutečné omezení není na serveru, ale v tom, kolik polygonů zvládne vykreslit
+Leaflet — a to nejde změřit dřív, než frontend existuje. Hodnota se doladí až podle naměřeného
+vykreslování a **výsledné číslo i jeho zdůvodnění patří do README** jako výkonové rozhodnutí.
+
+**Zjištění po cestě:** `land_type_definition` se u některých hodnot vrací jako prázdný řetězec,
+ne `null` — registr ČÚZK definici u části položek nevede. Pro info panel to znamená, že se musí
+testovat prázdnost, ne jen `null`.
+
+**Stav repozitáře:** API běží a je otestované (`/api/parcels`, `/api/parcel`, `/api/zonings`,
+včetně chybových stavů 400/404/500). Frontend neexistuje, `public/index.php` zatím není.
+Necommitnuto: `public/`, `src/Database.php`, `src/parcels.php`, `docs/roadmap.md`.
