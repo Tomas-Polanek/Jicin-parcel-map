@@ -13,3 +13,6 @@ docs/pruvodce-kodem.md
 
 *.log
 !keep.log
+# Interni nastaveni spoluprace s Claude Code - nepatri do odevzdani
+.claude/
+CLAUDE.md
