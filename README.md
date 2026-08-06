@@ -29,6 +29,8 @@ Aplikace pak běží na <http://localhost:8000>.
 Databáze je součástí repozitáře, takže **není potřeba nic stahovat ani importovat** — stačí
 spustit server. Proč je binární soubor v gitu, viz [zápisník](#zápisník) níže.
 
+Ověřeno ručně v **Chrome** i **Firefoxu**.
+
 ### Předpoklady
 
 - **PHP 8.1 nebo novější** (vyvíjeno na 8.5.9). Nutné kvůli `readonly` vlastnostem,

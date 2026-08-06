@@ -146,6 +146,7 @@ a README.
 ## Způsob spolupráce s Claude Code (dohodnuto)
 
 - **Míra detailu rozhodování:** Claude se ptá na zdůvodnění a odsouhlasení u **každého**
-  implementačního rozhodnutí, ne jen u architektury — viz `CLAUDE.md`.
+  implementačního rozhodnutí, ne jen u architektury. Celá dohoda je shrnutá v tabulce pravidel
+  na začátku [`roadmap.md`](roadmap.md).
 - **Zápis do roadmapy:** `roadmap.md` se aktualizuje automaticky, s časovým razítkem, při každém
   programování (mém i Claude Code).

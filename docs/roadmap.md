@@ -12,7 +12,35 @@ Tento soubor vede Claude Code automaticky. Účel: dohledatelný záznam toho, k
 kód, jaká rozhodnutí padla a proč — pro potřeby zápisníku v `plan.md`/README a pro to, aby bylo
 kdykoliv vidět, v jakém stavu projekt je.
 
-## Pravidla zápisu (viz `CLAUDE.md`)
+## Pravidla spolupráce, na která se záznamy odvolávají
+
+Záznamy níže odkazují na pravidla čísly („podle Pravidla 5“). Nešlo o obecné zvyklosti, ale
+o konkrétní dohodu, kterou jsem si pro tenhle projekt vytkl — vědomě přísnější, než by bylo
+nutné, protože cílem nebylo kód jen odevzdat, ale umět ho obhájit. Vznikala postupně, proto
+u pozdějších pravidel sedí datum zadání.
+
+| # | pravidlo | zadáno |
+|---|---|---|
+| 1 | Žádné implementační rozhodnutí bez toho, aby mi Claude předložil aspoň dvě varianty, doporučil jednu a počkal na moje slovo — ne jen u architektury, ale i u názvů, formátů odpovědí a pořadí kroků. | na začátku |
+| 2 | Při každé pracovní session vzniká nový záznam v tomhle souboru, automaticky, bez vyžádání. Záznamy se needitují ani nemažou; změna rozhodnutí = nový záznam. | na začátku |
+| 3 | `plan.md` je zdroj pravdy pro rozsah. Odchylka od plánu je sama o sobě rozhodnutí podle Pravidla 1. | na začátku |
+| 4 | Dokud výslovně neřeknu „implementuj“, nepíše se aplikační kód — plánovat, ověřovat a zapisovat ano. | na začátku |
+| 5 | Claude nikdy sám nevytvoří commit. Když je commit na místě, zeptá se, jestli ho udělá on, nebo já. Totéž pro `push` a další nevratné git operace. | 3. 8. |
+| 6 | Zjišťovat informace (číst soubory, hledat na webu, čtecí dotazy na cizí API) může Claude bez ptaní. Hranicí je objem staženého: do 10 MB bez ptaní, nad 10 MB se ptá předem. | 4. 8. |
+| 7 | Claude pracuje výhradně na větvi `claude`. Větev `main` je moje — nepřepíná ji, needituje, nemerguje ani nepushuje. | 5. 8. |
+| 8 | Dělba psaní kódu: backend v PHP píše Claude a hned mi každý celek vysvětlí; klientskou část píšu já. Zásada nad tím: **standard je vlastnictví, ne autorství** — co neumím vysvětlit vlastními slovy, to se neodevzdává. | 5. 8. |
+
+Pravidlo 8 bylo 6. 8. vědomě posunuto (kostru `index.html` a `style.css` napsal Claude a prošel
+ji se mnou řádek po řádku) a Pravidlo 1 bylo pro jednu session uvolněno na „rozhoduj se sám,
+ptej se jen na architekturu“. Obojí je zapsané v příslušných záznamech, ne zamlčené.
+
+> **Poznámka ke zmínkám o `CLAUDE.md` a `.claude/` v záznamech níže.** Pravidla byla během práce
+> zapsaná v souboru `CLAUDE.md` a část se vynucovala nastavením v `.claude/`. Obojí byly **pracovní
+> soubory, ne součást aplikace**, a do odevzdávaného repozitáře nepatří — jsou z něj odstraněné.
+> Záznamy níže je zmiňují proto, že popisují, co se který den skutečně dělo; nejsou to odkazy na
+> něco, co byste měli hledat. Znění pravidel je v tabulce výše.
+
+## Pravidla zápisu
 
 - Nový záznam vzniká automaticky při **každé** programovací session (moje i Tomášovy), bez nutnosti
   o to žádat.
@@ -1198,3 +1226,45 @@ znovu. Zavedené opatření: soubory, na kterých se právě pracuje, zůstávaj
 
 **Stav repozitáře:** spustitelný, funkčnost beze změny. Necommitnuto: `.gitignore`, `README.md`,
 `docs/roadmap.md`.
+
+---
+
+## [2026-08-06 18:20] – Tomáš (rozhodnutí) / Claude (provedl)
+
+**Co se dělo:** Odstranění interních souborů Claude Code z repozitáře — nejdřív ze současného
+stavu, pak i z celé historie — a následné dorovnání dokumentace, aby dávala smysl bez nich.
+Aplikační kód se neměnil. Tomáš navíc ověřil aplikaci ve Firefoxu.
+
+**Rozhodnutí a proč:**
+- **`CLAUDE.md` a `.claude/` odstraněny z repozitáře i ze všech commitů** (`git filter-repo
+  --invert-paths`, 16 commitů přepsáno). Jsou to pracovní soubory — pravidla spolupráce
+  a nastavení oprávnění nástroje — ne součást aplikace. Do odevzdávaného repozitáře nepatří ze
+  stejného důvodu, ze kterého tam nepatří `pruvodce-kodem.md`. Na disku zůstávají, jen nejsou
+  sledované gitem. Zamítnuto ponechat je jen v historii: pak by je našel každý, kdo si rozklikne
+  první commit.
+- **Chyba na straně Claude, zapsaná na rovinu:** když se 6. 8. rozhodovalo o vyřazení
+  `pruvodce-kodem.md`, stejný test platil i na tyhle dva soubory ležící vedle. Claude pravidlo
+  uplatnil na jeden soubor a na druhé dva ne, `CLAUDE.md` v přehledu dokonce odbyl slovem
+  „kontext“ místo aby se zeptal. Vyplavalo to až po přenosu na `main`.
+- **31 odkazů „Pravidlo N“ vyřešeno slovníčkem, ne přepisem odkazů.** Do záhlaví roadmapy přidána
+  tabulka osmi pravidel, jedna věta na pravidlo, včetně data zadání. Zamítnuto přepisovat každý
+  odkaz na opisné znění — 31 zásahů a věty by zbytněly (osmkrát „podle pravidla, že Claude nikdy
+  sám nevytváří commit“ se čte hůř než „podle Pravidla 5“).
+- **Historické zmínky o `CLAUDE.md` v záznamech ponechány beze změny.** Ukázalo se, že jich není
+  6, ale 35, a naprostá většina nejsou odkazy, nýbrž popis toho, co se který den dělo („Změněny
+  `CLAUDE.md` a `.claude/settings.json“). Přepsat je by znamenalo falšovat záznam a šlo by přímo
+  proti Pravidlu 2. Místo toho je nahoře poznámka, že šlo o pracovní soubory, které v repozitáři
+  schválně nejsou.
+- **V `plan.md` opraven jediný živý ukazatel** („viz `CLAUDE.md`“) na odkaz do tabulky pravidel.
+
+**Ověřeno:** aplikace **ve Firefoxu** (Tomáš) i v **Chrome** (Claude, viz záznam 15:00) — tím je
+splněný cíl #8 z `plan.md`, poslední otevřený bod zadání. Poznámka doplněna do README.
+Po přepisu historie ověřeno, že `CLAUDE.md` ani `.claude/` nejsou v žádném z commitů, a že
+oba soubory pořád existují na disku.
+
+**Stav repozitáře:** spustitelný, funkčnost beze změny, 12 commitů s novými hashi.
+Necommitnuto: `README.md`, `docs/plan.md`, `docs/roadmap.md`.
+
+**Zbývá:** přejmenovat první commit, jehož zpráva pořád zní „Add project plan, decision log, and
+Claude collaboration rules“, ačkoliv ta pravidla už v repozitáři nejsou. Vyžaduje druhý přepis
+historie, proto se dělá až po commitnutí těchhle úprav.
