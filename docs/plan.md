@@ -118,14 +118,30 @@ vlastnictví bude v README uvedeno jako vědomé, zdůvodněné rozhodnutí, ne 
   trojici, která dává v katastru jedinečnost. Ověřeno na 9 028 parcelách: jedinečné, zatímco
   samotné parcelní číslo jedinečné není. Zdůvodnění výběru viz `roadmap.md`.
 
-## Zbývá doladit (další session, před psaním kódu)
+## Zbývá doladit
 
-- Při reálném stažení dat z CPX vizuálně/datově potvrdit, že hranice zvolených 4 k.ú. skutečně
-  na sebe navazují tak, jak předpokládá tento plán (odhad zatím z popisných zdrojů, ne z geometrie).
-*(Prázdné — všechna rozhodnutí, která si tento plán vytkl před implementací, jsou uzavřená.
-Schéma databáze rozhodnuto 2026-08-04, viz `roadmap.md`, záznam 14:40. Zbývá už jen jedno
-ověření, které nejde udělat dřív než nad hotovou mapou: vizuálně potvrdit, že zvolená 4 k.ú.
-na sebe skutečně navazují.)*
+*(Prázdné — všechna rozhodnutí i ověření, která si tento plán vytkl, jsou uzavřená.)*
+
+**Uzavřeno 2026-08-06: hranice 4 k.ú. na sebe navazují.** Ověřeno nad staženou geometrií —
+obalové obdélníky všech tří sousedních území se s Jičínem překrývají (vzdálenost 0 m), takže
+dohromady tvoří souvislý celek:
+
+| katastrální území | kód | parcel | obalový obdélník |
+|---|---|---|---|
+| Jičín | 659541 | 12 284 | 15,3284 , 50,4184 .. 15,4026 , 50,4598 |
+| Popovice u Jičína | 725838 | 1 475 | 15,3531 , 50,4026 .. 15,3994 , 50,4259 |
+| Robousy | 740225 | 2 444 | 15,3813 , 50,4099 .. 15,4279 , 50,4444 |
+| Valdice | 776530 | 1 053 | 15,3783 , 50,4493 .. 15,4054 , 50,4598 |
+
+Popovice a Valdice spolu nesousedí (2,6 km od sebe) a Robousy s Valdicemi taky ne (548 m) —
+to ale plán nepředpokládal: souvislost drží Jičín uprostřed, se kterým sousedí všechna tři.
+Doplňkem k tomuto výpočtu je pohled na mapu, kde parcely tvoří souvislou plochu bez děr mezi
+územími. (Překryv obalových obdélníků sám o sobě není důkazem společné hranice, jen ji
+připouští — proto obojí.)
+
+**Uzavřeno 2026-08-06: limit výřezu `MAX_BBOX_AREA`.** Provizorní hodnota `0,0002` z 2026-08-05
+nahrazena `0,001`, doladěna měřením celého řetězce v prohlížeči. Viz `roadmap.md`, záznam 15:00,
+a README.
 
 ## Způsob spolupráce s Claude Code (dohodnuto)
 

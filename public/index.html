@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mapa parcel — Jičín a okolí</title>
+
+    <!-- Nejdřív styly Leafletu, pak naše — co je níž, přebíjí. -->
+    <link rel="stylesheet" href="vendor/leaflet.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Obal existuje kvůli flexboxu: ten rovná vedle sebe přímé potomky,
+         takže mapa i panel musí mít společného rodiče. -->
+    <div id="layout">
+        <div id="map">
+            <!-- Hláška při moc velkém výřezu. Je uvnitř mapy schválně —
+                 patří tam, kam se uživatel právě dívá, ne do panelu. -->
+            <p id="notice" hidden></p>
+        </div>
+
+        <aside id="panel">
+            <h1>Mapa parcel</h1>
+
+            <div id="detail">
+                <p class="hint">Klikni na parcelu v mapě.</p>
+            </div>
+
+            <p id="status"></p>
+        </aside>
+    </div>
+
+    <!-- Leaflet musí být první: app.js používá L, které vzniká až tady. -->
+    <script src="vendor/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

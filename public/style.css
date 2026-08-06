@@ -1,0 +1,127 @@
+/*
+ * Rozvržení: mapa vlevo přes zbytek šířky, panel vpravo o pevné šířce.
+ */
+
+/* Výška se v procentech počítá z rodiče, takže ji musí mít celý řetězec
+   html → body → #layout. Kdyby ji kterýkoliv článek neměl, spadne to na nulu
+   a mapa bude neviditelná. Margin ruší výchozí odsazení těla stránky. */
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: system-ui, sans-serif;
+    color: #1d1d1d;
+}
+
+#layout {
+    display: flex;
+    height: 100%;
+}
+
+/* flex: 1 znamená „ber všechno místo, které ve flexovém řádku zbyde“ —
+   tedy celou šířku okna kromě panelu. Šedé pozadí je vidět, než se
+   načtou dlaždice mapy. position: relative kvůli hlášce #notice uvnitř. */
+#map {
+    position: relative;
+    flex: 1;
+    background: #e8e8e8;
+}
+
+/* Leafletové vrstvy sahají po z-index 700, ovládací prvky po 1000 —
+   hláška musí být nad nimi. */
+#notice {
+    position: absolute;
+    z-index: 1100;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    font-size: 0.9rem;
+}
+
+#notice[hidden] {
+    display: none;
+}
+
+/* Pevná šířka schválně: panel, který se přizpůsobuje obsahu, by při každém
+   kliknutí poskočil. 320 px stačí na české popisky typu „Zastavěná plocha
+   a nádvoří“. overflow-y drží dlouhý obsah uvnitř panelu, místo aby
+   roztahoval stránku. */
+#panel {
+    display: flex;
+    flex-direction: column;
+    width: 320px;
+    padding: 1rem;
+    overflow-y: auto;
+    background: #f6f6f6;
+    border-left: 1px solid #ddd;
+}
+
+#panel h1 {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+}
+
+/* flex: 1 odtlačí #status na spodek panelu, ať neposkakuje podle délky detailu. */
+#detail {
+    flex: 1;
+}
+
+.hint {
+    color: #666;
+}
+
+/* Definiční seznam: dt je název údaje, dd jeho hodnota. */
+#detail dl {
+    margin: 0;
+}
+
+#detail dt {
+    margin-top: 0.8rem;
+    color: #666;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+#detail dd {
+    margin: 0.15rem 0 0;
+    font-size: 1rem;
+}
+
+#detail .number {
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+#detail .definition {
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid #ddd;
+    color: #666;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+#detail .missing {
+    color: #999;
+}
+
+#detail .error {
+    color: #c1121f;
+}
+
+#status {
+    margin: 1rem 0 0;
+    padding-top: 0.6rem;
+    border-top: 1px solid #ddd;
+    color: #666;
+    font-size: 0.8rem;
+}

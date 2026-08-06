@@ -54,9 +54,13 @@ běh už znovu nestahuje.
 import.php              jednorázový import dat z ČÚZK do SQLite
 src/Parcel.php          jedna parcela připravená k zápisu (readonly objekt)
 src/Database.php        otevření databáze
-src/parcels.php         dotazy nad parcelami (výřez, detail)
+src/parcels.php         dotazy nad parcelami (výřez, detail) a limit výřezu
 public/router.php       směrovač pro vestavěný PHP server
 public/api/index.php    API — tabulka rout a ošetření vstupu
+public/index.html       kostra stránky (mapa + info panel)
+public/style.css        rozvržení
+public/app.js           klient — mapa, načítání podle výřezu, info panel
+public/vendor/          Leaflet 1.9.4 (leaflet.js, leaflet.css)
 db/parcels.sqlite       hotová databáze (součást repozitáře)
 ```
 
@@ -148,19 +152,46 @@ jedinečná, **samotné parcelní číslo ne** (4 kolize přes hranice k.ú.). N
 v `nahlizenidokn.cuzk.cz`, takže obsah API jde ověřit proti oficiálnímu zdroji.
 
 **Při velkém výřezu se parcely nevykreslují.**
-Nad nastavenou plochou vrátí API `"zoom_in": true` a prázdný seznam. Bez toho by jeden
-posun mapy znamenal **6,75 MB** a 17 256 polygonů k vykreslení. Naměřeno:
+Nad plochou `MAX_BBOX_AREA` (v `src/parcels.php`) vrátí API `"zoom_in": true` a prázdný
+seznam; mapa místo polygonů ukáže výzvu k přiblížení. Hodnota není odhad — je doladěná
+měřením **celého řetězce v prohlížeči**, tedy stažení + `JSON.parse` + vykreslení Leafletem:
 
-| výřez | parcel | velikost odpovědi |
-|---|---|---|
-| 0,4 × 0,4 km | 473 | 0,24 MB |
-| 0,7 × 0,7 km | 1 136 | 0,57 MB |
-| 1,0 × 1,0 km | 2 408 | 1,12 MB |
-| celý rozsah | 17 256 | 6,75 MB |
+| plocha výřezu | šířka | parcel | odpověď | celkem |
+|---|---|---|---|---|
+| 2,0 × 10⁻⁴ | 1,3 km | 1 331 | 0,55 MB | 46 ms |
+| 4,0 × 10⁻⁴ | 1,8 km | 2 523 | 1,05 MB | 85 ms |
+| **1,0 × 10⁻³** | **2,9 km** | **5 669** | **2,36 MB** | **209 ms** ← zvolený limit |
+| 2,0 × 10⁻³ | 4,1 km | 11 121 | 4,58 MB | 350 ms |
+| 1,35 × 10⁻² | 10,7 km | 17 256 | 6,75 MB | 559 ms (celý rozsah) |
+
+Zvoleno `1,0 × 10⁻³`, protože pauza kolem 200 ms po dotažení pohybu ještě splyne s pohybem
+samotným, kdežto půl sekundy už je vidět. Měřeno na rychlém stroji, takže je v hodnotě
+schválně rezerva. Limit je na **ploše**, ne na počtu parcel — díky tomu se sám přizpůsobí
+velikosti okna, ale hustěji zastavěné území by při stejné ploše znamenalo víc polygonů.
 
 Zvažováno i zjednodušování geometrie při menším zoomu (Douglas–Peucker). Zamítnuto: je to
 vlastní geometrický kód navíc, a hranice parcel jsou přitom smysl celé aplikace — raději
 méně parcel přesně než všechny nepřesně.
+
+**Leaflet kreslí do canvasu, ne do SVG** (`preferCanvas: true`).
+Ve výchozím nastavení vytvoří Leaflet **jeden SVG uzel na každou parcelu** — při tisících
+polygonů se prohlížeč utopí ve správě DOM. S canvasem jde všechno do jediného plátna:
+vykreslení všech 17 256 parcel trvá **402 ms** místo násobně víc. Cena: jednotlivé polygony
+nejdou stylovat přes CSS, styl se nastavuje jen z JavaScriptu. Pro tuhle aplikaci to nevadí,
+protože styly jsou dva — běžná a vybraná parcela.
+
+**Parcely se načítají po dotažení pohybu, bez cache.**
+Na `moveend` s prodlevou 200 ms; vrstva se zahodí a postaví znovu. Během samotného tažení se
+nenačítá nic — Leaflet už vykreslené vrstvy jen posouvá transformací, takže pohyb je plynulý
+z principu a řeší se až pauza po něm. Rozdělaný dotaz se ruší přes `AbortController`: když
+uživatel popojede dřív, než odpověď dorazí, je odpověď pro výřez, ze kterého už odjel.
+Zamítnuta cache už načtených parcel — pomohla by jen u malého posunu do už viděné oblasti,
+kdežto drahý případ (oddálení, skok jinam) je celý z nových dat, kde cache nemá co nabídnout.
+
+**Zvýraznění vybrané parcely se drží mimo vrstvu.**
+Vrstva parcel se při každém pohybu zahodí a postaví znovu, takže si zvýraznění nemůže pamatovat
+sama — klíč vybrané parcely je v proměnné `selectedRef` a styl se z něj odvozuje při každém
+vykreslení. Díky tomu vybraná parcela zůstane zvýrazněná i po posunu mapy.
 
 **Vlastník parcely v aplikaci není.**
 Svobodná data ČÚZK (WFS/INSPIRE) jméno vlastníka neobsahují — to je dostupné jen
@@ -178,6 +209,26 @@ nemá. Anglické názvy sloupců navíc mapují 1:1 na zdrojová pole INSPIRE
 
 **Čisté PHP bez frameworku**, jak zadání preferuje. Routování je jedna tabulka rout
 v `public/api/index.php`. Žádná vrstva navíc, žádná abstrakce pro jediného volajícího.
+
+**Klient je vanilla JS s Leafletem, bez frameworku a bez build kroku.**
+Zvažován Next.js. Zamítnut: je to framework nad Reactem běžící na Node.js, takže by k PHP
+backendu přibyl druhý server (a s ním CORS nebo proxy), README by začínalo instalací Node
+a `npm install` — což je přesně ta závislost, kvůli které je v repozitáři hotová databáze —
+a Leaflet se s Reactem pere o vlastnictví DOM. Klientská část má přitom kolem 230 řádků, tedy
+rozsah, kde framework nemá co spravovat.
+
+**Leaflet je stažený v repozitáři** (`public/vendor/`), ne z CDN. Stejný argument jako
+u databáze: aplikace se má spustit jedním příkazem a nezáviset na tom, jestli cizí server
+zrovna běží. Cena: 160 kB cizího kódu v gitu. Mapový podklad **OpenStreetMap** — zdarma,
+bez API klíče, bez rizika, že v den pohovoru dojde limit.
+
+**Info panel je pevný panel vedle mapy, ne bublina nad parcelou.**
+Popup by překryl právě tu parcelu, na kterou uživatel klikl, u delších popisků („Zastavěná
+plocha a nádvoří") by se roztáhl přes kus mapy a zavíral by se při pohybu mapy.
+
+**Chybějící údaj se vypíše jako „neuvedeno", nezamlčí se.**
+Způsob využití chybí zhruba u tří čtvrtin parcel (viz níže). Prázdné místo v panelu by
+vypadalo jako chyba aplikace; explicitní „neuvedeno" říká, že se neví, a že to víme.
 
 ### Co překvapilo
 

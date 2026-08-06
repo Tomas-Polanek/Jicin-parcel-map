@@ -944,3 +944,182 @@ testovat prázdnost, ne jen `null`.
 **Stav repozitáře:** API běží a je otestované (`/api/parcels`, `/api/parcel`, `/api/zonings`,
 včetně chybových stavů 400/404/500). Frontend neexistuje, `public/index.php` zatím není.
 Necommitnuto: `public/`, `src/Database.php`, `src/parcels.php`, `docs/roadmap.md`.
+
+---
+
+## [2026-08-05 17:10] – Tomáš (psal README) / Claude (zápis)
+
+> **Doplněno zpětně 2026-08-06 13:55.** Tato session proběhla bez záznamu — Pravidlo 2 se
+> tehdy neuplatnilo. Zápis vzniká z commitu `55cf17f` a z výsledného souboru, ne z poznámek
+> pořízených během práce, takže je stručnější než ostatní záznamy a nezachycuje varianty,
+> které se cestou zvažovaly a zahodily. Doplněno se souhlasem Tomáše; mezera se nezakrývá.
+
+**Co se dělo:** Napsán celý obsah `README.md` (232 řádků, commit `55cf17f`) — spuštění,
+předpoklady, struktura, popis API, zdroj dat a zápisník. Aplikační kód se neměnil.
+
+**Rozhodnutí a proč (rekonstruováno z výsledku):**
+- **Zápisník je součástí README, ne samostatný soubor.** Zadání žádá „krátký zápisník"
+  (cíl #16) a README je první a často jediný soubor, který recenzent otevře. `docs/roadmap.md`
+  zůstává provozním logem pro nás, README nese destilovanou verzi pro čtenáře zvenčí.
+- **Zápisník rozdělený na tři části** — „Rozhodnutí a proč", „Co překvapilo", „Co bych udělal
+  s víc časem". Kopíruje to trojici, kterou jmenuje samo zadání, takže recenzent najde
+  odpověď na svou otázku tam, kde ji čeká.
+- **U rozhodnutí se uvádí i zamítnutá varianta a její cena**, ne jen zvolená cesta (např.
+  Křovákovo zobrazení počítané vlastními silami, Douglas–Peucker, R-Tree). Hodnotí se
+  „postup a rozhodování" (kritérium #17), a rozhodnutí bez alternativy nevypadá jako
+  rozhodnutí.
+- **Čísla v README jsou naměřená, ne odhadnutá** — velikosti odpovědí, doby dotazů, počty
+  parcel, podíl parcel s dírou. Přebrána z měření zapsaných v tomto logu.
+
+**Stav repozitáře:** spustitelný, beze změny funkčnosti — měnil se jen README.
+
+---
+
+## [2026-08-06 13:48] – Tomáš (rozhodnutí) / Claude (vysvětlení a zápis)
+
+**Co se dělo:** Session bez psaní kódu — probrána volba technologie frontendu a čtyři rozhodnutí,
+která musela padnout před první řádkou klientského kódu. Kód píše podle Pravidla 8 Tomáš, zatím
+nezačal.
+
+**Rozhodnutí a proč:**
+- **Frontend jako vanilla JS + Leaflet, ne Next.js.** Tomáš se ptal na Next.js s tím, že ho bral
+  jako způsob, jak spojit HTML, CSS a JS do jednoho souboru — to ale dělá single-file komponenta
+  (Vue/Svelte), ne Next.js; ten je frameworkem nad Reactem běžícím na Node.js. Zadání frontend
+  nijak neomezuje, takže Next.js by byl přípustný, zamítnut ale byl kvůli důsledkům: druhý server
+  vedle PHP (a tím CORS/proxy navíc), nutnost Node + `npm install` v README — což je přesně ta
+  závislost, kvůli které jsme commitovali databázi (cíl #9) — tření Leafletu s Reactem o vlastnictví
+  DOM, a učení tří nových věcí najednou v už rozpracovaném časovém rozpočtu (cíl #22). Vanilla
+  varianta je ~100–150 řádků, tedy rozsah, kde framework nemá co spravovat.
+- **Tři soubory `public/index.html` + `app.js` + `style.css`**, ne všechno v jednom HTML.
+  Prohlížeč pak hlásí chyby s čísly řádků, která odpovídají skutečnému JS souboru, a v repozitáři
+  je na první pohled vidět, kde je logika mapy. Cena: tři soubory místo jednoho.
+- **Leaflet stažený do `public/vendor/`, ne z CDN.** Stejný argument jako u commitnuté databáze —
+  aplikace se má spustit jedním příkazem a nezávisle na tom, jestli cizí server zrovna běží.
+  Cena: ~150 kB cizího kódu v gitu. (Dlaždice OSM internet potřebují tak jako tak, ale bez CDN
+  aspoň naběhne stránka a UI, ne bílá obrazovka.)
+- **Načítání parcel na `moveend` s debounce, s pokaždé novým dotazem**, ne cache už načtených
+  parcel. Zamítnutí cache je vědomé: pomohla by jen u malého posunu do už viděné oblasti, kdežto
+  drahý případ (oddálení nebo skok jinam) je celý z nových dat, kde cache nemá co nabídnout —
+  zaplatila by se složitost a stejně by se stálo. Tomáš vznesl námitku, že zadání dvakrát zmiňuje
+  plynulost; rozhodnuto ji řešit až měřením nad hotovou mapou, ne preventivně.
+- **Info panel jako pevný panel vedle mapy**, ne Leaflet popup. Bublina by překryla právě tu
+  parcelu, na kterou uživatel klikl, u delších popisků („Zastavěná plocha a nádvoří") by se
+  roztáhla přes kus mapy a zavírala by se při pohybu mapy. Cena: rozvržení flexboxem a ošetření
+  stavu „nic není vybráno".
+
+**Odloženo k rozhodnutí až podle měření (ne opomenuto):** tři páky na plynulost, které se mají
+probrat, teprve až půjde měřit skutečné vykreslování — canvas renderer místo výchozího SVG
+(`preferCanvas`, jedna volba místo jednoho DOM uzlu na parcelu), doladění `MAX_BBOX_AREA`
+(stále provizorních `0.0002`, otevřený bod z 2026-08-05 15:38) a `AbortController` na zrušení
+dotazu pro výřez, ze kterého už uživatel odjel.
+
+**Provedeno:** stažen **Leaflet 1.9.4** do `public/vendor/` — jen `leaflet.js` (144 kB)
+a `leaflet.css` (14 kB), bez PNG ikon markerů: kreslíme polygony, ne značky, takže by v repozitáři
+ležely nepoužité. Verze 1.9.4 je poslední stabilní 1.x; verze 2.0 je zatím v beta a distribuuje se
+jen jako ES moduly — zbytečné riziko pro tenhle rozsah.
+
+**Stav repozitáře:** spustitelný, backend i README beze změny, frontend zatím neexistuje.
+Necommitnuto: `docs/roadmap.md`, `public/vendor/`.
+
+---
+
+## [2026-08-06 14:36] – Tomáš (rozhodnutí) / Claude (psal kód)
+
+**Co se dělo:** Tomáš začal psát `index.html` a `style.css` sám. Po třech kolech revize (chybné
+vnoření obalu, neuzavřená značka, značka `<sidebar>`, která v HTML neexistuje, a cesty
+s nadbytečným `public/`) se ukázalo, že se čas tratí na mechanické části, ne na té, která se
+hodnotí. Rozhodnuto posunout hranici z Pravidla 8. Kostru napsal Claude, `app.js` zůstává Tomášovi.
+
+**Rozhodnutí a proč:**
+- **Posunuta dělba z Pravidla 8: `index.html` a `style.css` píše Claude, `app.js` píše Tomáš.**
+  Zadání hodnotí kvalitu PHP kódu, plynulost a způsob rozhodování — statická kostra stránky mezi
+  hodnocenými věcmi není, kdežto klientská logika (načítání podle výřezu, debounce, klik na
+  parcelu) přímo souvisí s kritériem plynulosti a Tomáš ji bude u pohovoru obhajovat. Rozhodnutí
+  je vědomé a zapsané, ne tiché obejití pravidla; Tomášova zásada **vlastnictví, ne autorství**
+  platí dál a je zajištěná tím, že se kostra prochází řádek po řádku, dokud ji Tomáš neumí
+  převyprávět vlastními slovy. Zamítnuta varianta pokračovat po řádcích s Tomášem u klávesnice —
+  stálo by to zbytek časového rozpočtu (cíl #22) na části, kterou nikdo hodnotit nebude.
+- **Obalový `<div id="layout">` kolem mapy a panelu.** Flexbox rovná přímé potomky, takže oba
+  prvky musí mít společného rodiče. Zamítnuto dát `display: flex` rovnou na `<body>` — fungovalo
+  by to, ale zabralo by to jediný prvek, do kterého by šla později přidat hlavička nad mapu.
+- **Panel je `<aside>`, ne `<div>`.** Významově jde o doplňkový obsah vedle hlavního — odečítače
+  obrazovky s tím umí pracovat, `<div>` nenese žádný význam.
+- **Pevná šířka panelu 320 px**, ne šířka podle obsahu: panel měnící šířku by při každém kliknutí
+  poskočil a české popisky („Zastavěná plocha a nádvoří“) potřebují místo.
+- **Šedé pozadí mapy `#e8e8e8`** není jen dočasná kontrolní barva — zůstává, protože je vidět
+  během načítání dlaždic místo bílé díry.
+- **Vnitřek panelu zatím jen odstavec s výzvou „Klikni na parcelu."** Jeho skutečná struktura je
+  samostatné rozhodnutí, které padne až u kroku s info panelem — teď by se rozhodovalo naslepo.
+
+**Stav repozitáře:** spustitelný, `localhost:8000` poprvé vrací stránku místo 404. Mapa se ještě
+nevykresluje — `app.js` je prázdný a čeká na Tomáše. Necommitnuto: `docs/roadmap.md`,
+`public/index.html`, `public/style.css`, `public/app.js`, `public/vendor/`.
+
+---
+
+## [2026-08-06 15:00] – Claude (psal kód a měřil) / Tomáš (zadal rozsah)
+
+**Co se dělo:** Tomáš zadal „udělej to celé, rozhoduj se sám, maximálně se ptej na architekturu“
+a jako cíl session „funkční kód, vše podle zadání a plánu splněno a zdokumentováno“. Dopsán
+`public/app.js` (celá klientská logika), doladěn `MAX_BBOX_AREA` podle měření v prohlížeči,
+ověřen celý tok v Chrome, aktualizováno README a přidán `docs/pruvodce-kodem.md`.
+
+**Vědomé uvolnění Pravidla 1:** Tomáš výslovně zrušil povinnost odsouhlasit každé implementační
+rozhodnutí předem a ponechal ji jen pro architekturu. Rozhodnutí učiněná v této session jsou
+proto zapsaná **zpětně zde a v README**, ne odsouhlasená dopředu. Pravidlo 1 tím není zrušené
+do budoucna, jen se na tuhle session neuplatnilo. Zapsáno na rovinu, protože „postup a
+rozhodování“ je hodnocené kritérium a tahle změna je jeho součástí.
+
+**Rozhodnutí a proč:**
+- **`preferCanvas: true`.** Leaflet by jinak vytvořil jeden SVG uzel na parcelu. Změřeno:
+  s canvasem se všech 17 256 parcel vykreslí za **402 ms**. Cena: polygony nejdou stylovat
+  přes CSS — pro dva styly (běžná/vybraná parcela) nevadí.
+- **Načítání na `moveend` s debounce 200 ms, bez cache, s `AbortController`.** Potvrzení
+  rozhodnutí z 13:48 po měření. Cache by pomohla jen u malého posunu do už viděné oblasti;
+  drahý případ (oddálení, skok jinam) je celý z nových dat.
+- **Zvýraznění vybrané parcely drženo v `selectedRef` mimo vrstvu**, protože vrstva se při
+  každém pohybu zahazuje a staví znovu. Styl se odvozuje funkcí `styleFor()` při každém
+  vykreslení. Ověřeno: po posunu mapy zůstane vybraná parcela zvýrazněná.
+- **Panel se staví přes `document.createElement` a `textContent`, ne skládáním `innerHTML`.**
+  Data jdou z databáze do HTML; skládaný řetězec by byl prostor pro vložení cizího kódu.
+- **Chybějící údaj se vypisuje jako „neuvedeno“.** Prázdné místo by vypadalo jako chyba
+  aplikace. Testuje se i prázdný řetězec, ne jen `null` — `land_type_definition` se u části
+  položek registru ČÚZK vrací prázdný (zjištění z 2026-08-05 15:38).
+- **Výchozí zoom 17.** Při 16 by se na velmi široké obrazovce (ověřovací monitor má mapu
+  2 199 px) hned po načtení ukázala jen výzva k přiblížení. Recenzent má vidět parcely.
+- **`MAX_BBOX_AREA` zvýšeno z provizorních `0,0002` na `0,001`** — uzavření otevřeného bodu
+  z 2026-08-05 15:38. Původní hodnota byla nastavená dřív, než existoval klient, a na velkém
+  monitoru blokovala i zoom 17. Nová hodnota je doladěná měřením celého řetězce v prohlížeči
+  (fetch + `JSON.parse` + vykreslení), ne odhadem.
+
+**Naměřeno v prohlížeči (Chrome, localhost, mapa 2 199 × 1 308 px):**
+
+| plocha | šířka | parcel | odpověď | fetch | parse | render | celkem |
+|---|---|---|---|---|---|---|---|
+| 2,0e-4 | 1,30 km | 1 331 | 0,55 MB | 12 | 2 | 32 | **46 ms** |
+| 4,0e-4 | 1,84 km | 2 523 | 1,05 MB | 16 | 7 | 62 | **85 ms** |
+| 1,0e-3 | 2,91 km | 5 669 | 2,36 MB | 26 | 21 | 162 | **209 ms** ← limit |
+| 2,0e-3 | 4,11 km | 11 121 | 4,58 MB | 48 | 42 | 261 | **350 ms** |
+| 1,35e-2 | 10,68 km | 17 256 | 6,75 MB | 65 | 91 | 402 | **559 ms** |
+
+**Ověřeno v Chrome:** vykreslení parcel, klik → detail v panelu (`659541-st. 1584`,
+`659541-985/47`), zachování zvýraznění po překreslení vrstvy, hláška `zoom_in` při velkém
+výřezu a její zmizení po přiblížení, prázdná konzole po načtení. Chybové cesty API: `400` na
+nesmyslný i převrácený `bbox`, `404` na neexistující parcelu i neznámý endpoint, `200` na `ref`
+s mezerou a tečkou (`776530-st. 96/7`).
+
+**Zjištění po cestě:**
+- **První měření podle zoomu bylo neplatné** — `map.setView()` animuje a `getBounds()` vracel
+  ještě starý výřez, takže všech šest úrovní zoomu vyšlo na stejnou plochu. Opraveno přes
+  `{ animate: false }` a čekání. Připomínka, že měření se má nejdřív ověřit na tom, jestli
+  vůbec měří to, co si myslíme.
+- **Limit se neměří zoomem, ale plochou.** Stejný zoom znamená na jiném monitoru jiný výřez —
+  ověřovací stroj má okno 2 552 × 1 308 CSS px, kde zoom 17 vydá `2,109e-4`, zatímco na
+  notebooku 1366 px jen `5,3e-5`. Proto je limit na ploše, ne na zoomu.
+
+**Stav repozitáře:** aplikace je kompletní a funkční od mapy po info panel. Necommitnuto:
+`docs/roadmap.md`, `docs/pruvodce-kodem.md`, `README.md`, `src/parcels.php`, `public/index.html`,
+`public/style.css`, `public/app.js`, `public/vendor/`.
+
+**Zbývá:** ruční test ve **Firefoxu** (cíl #8 v `plan.md` vyžaduje Chrome i Firefox; ověřen zatím
+jen Chrome) a commit — ten podle Pravidel 5 a 7 dělá Tomáš.
