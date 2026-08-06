@@ -1,5 +1,13 @@
 # Roadmap / průběžný log
 
+> **Tenhle soubor číst nemusíte.** Je to syrový chronologický podklad — jeden záznam za každou
+> pracovní session, zapisovaný průběžně během práce, ne sepsaný zpětně na konci. Leží tu jako
+> doklad postupu, ne jako text ke čtení.
+>
+> **Shrnutí rozhodnutí tematicky, a mnohem kratší, je v [`rozhodnuti.md`](rozhodnuti.md).**
+> Tam začněte. Sem se dívejte, jen když u konkrétního rozhodnutí chcete vidět, kdy padlo,
+> co mu předcházelo a co se přitom naměřilo.
+
 Tento soubor vede Claude Code automaticky. Účel: dohledatelný záznam toho, kdy a kdo psal/měnil
 kód, jaká rozhodnutí padla a proč — pro potřeby zápisníku v `plan.md`/README a pro to, aby bylo
 kdykoliv vidět, v jakém stavu projekt je.
@@ -1123,3 +1131,70 @@ s mezerou a tečkou (`776530-st. 96/7`).
 
 **Zbývá:** ruční test ve **Firefoxu** (cíl #8 v `plan.md` vyžaduje Chrome i Firefox; ověřen zatím
 jen Chrome) a commit — ten podle Pravidel 5 a 7 dělá Tomáš.
+
+---
+
+## [2026-08-06 16:41] – Tomáš (rozhodnutí) / Claude (zápis)
+
+**Co se dělo:** Přerovnání dokumentace. Aplikační kód se neměnil. Podnět dal Tomáš: dokumentace
+se špatně čte a roadmapa je na čtení moc dlouhá.
+
+**Zjištění, které rozhodnutí spustilo:** dokumentace měla 1 873 řádků proti zhruba 1 000 řádkům
+kódu — dvakrát delší než to, co dokumentuje. Přitom zadání žádá „**krátký** zápisník“. Samotná
+`roadmap.md` má 1 125 řádků ve 28 záznamech; recenzent takový soubor nepřečte, přeskočí ho, a tím
+se ztratí to nejcennější, co v něm je.
+
+**Rozhodnutí a proč:**
+- **Dokumentace rozvržena do tří vrstev podle čtenáře**, ne do jednoho velkého textu: README
+  (musí stačit samo), `rozhodnuti.md` (proč), `roadmap.md` (doklad). Zamítnuto slučování do
+  README — nafouklo by ho a zadání chce zápisník krátký.
+- **Nový `docs/rozhodnuti.md` je tematický, ne chronologický.** Kapitoly Data, Úložiště, Import,
+  API, Klient, Výkon, Hranice, Konvence; u každého rozhodnutí čtveřice *co / alternativy / proč /
+  cena*. Důvod: chronologie odpovídá na otázku „kdy“, ale recenzent se ptá „proč“ — a odpověď na
+  „proč“ je v logu rozsypaná přes 28 záznamů a tři dny.
+- **`roadmap.md` zůstává beze změny obsahu, dostala jen hlavičku**, že je to podklad a číst se
+  nemusí. Pravidlo 2 se tím neporušuje: žádný záznam se neupravil ani nesmazal, změnil se jen
+  úvodní odstavec souboru. Zamítnuto roadmapu z repozitáře odebrat — je to jediný doklad, že
+  rozhodnutí vznikala průběžně, ne že byla sepsaná zpětně na konci.
+- **`docs/pruvodce-kodem.md` jde mimo repozitář** (přidán do `.gitignore`). Je to příprava Tomáše
+  na pohovor — otázky a odpovědi, slabá místa, jak odpovědět na dotaz, kdo psal kód. To je
+  koučovací materiál, ne dokumentace produktu; v odevzdaném repozitáři působí divně. Na disku
+  zůstává.
+- **Do README přidána tabulka „Kudy číst“** s jednou větou ke každému dokumentu. Bez ní by byla
+  nová vrstva neviditelná — recenzent netuší, že `rozhodnuti.md` existuje.
+
+**Stav repozitáře:** spustitelný, funkčnost beze změny. Necommitnuto: `.gitignore`, `README.md`,
+`docs/roadmap.md`, nový `docs/rozhodnuti.md`. Odebrání průvodce ze sledování gitem musí ještě
+provést Tomáš jedním příkazem (viz konverzace) — git operace podle Pravidel 5 a 7 dělá on.
+
+**Otevřené, vědomě nedořešené:** sekce „Zápisník“ v README (173 řádků) se teď z velké části
+překrývá s `rozhodnuti.md`. Zkrácení README na skutečně krátký zápisník s odkazem na tematický
+dokument je samostatné rozhodnutí — probrat, ne udělat potichu.
+
+---
+
+## [2026-08-06 17:05] – Tomáš (rozhodnutí) / Claude (provedl)
+
+**Co se dělo:** Dokončení přerovnání dokumentace z předchozího záznamu — uzavření bodu, který tam
+byl zapsaný jako „otevřené, vědomě nedořešené“. Aplikační kód se neměnil.
+
+**Rozhodnutí a proč:**
+- **Sekce „Rozhodnutí a proč“ v README zkrácena ze 119 řádků na 45** — zůstalo šest rozhodnutí,
+  která nejvíc určila výslednou podobu (předem stažená data, SQLite v repozitáři, limit výřezu,
+  canvas renderer, čisté PHP + vanilla klient, chybějící vlastník), plus odkaz do
+  `docs/rozhodnuti.md` na zbytek. Důvod: po vzniku tematického dokumentu byla ta samá rozhodnutí
+  v repozitáři dvakrát, a zadání přitom žádá **krátký** zápisník. Celé README kleslo z 293 na
+  219 řádků.
+- **Tabulka měření limitu zkrácena na tři řádky** místo pěti — krajní hodnoty a zvolený limit
+  stačí k pochopení, plná tabulka zůstává v `rozhodnuti.md` a v komentáři u konstanty.
+- **Sekce „Co překvapilo“ ponechána celá.** Zadání ji jmenuje výslovně a její obsah se nikde
+  jinde neopakuje — je to jediné místo, kde je zapsané, čím konkrétně matoucí byla data ČÚZK.
+- **Sekce „Co bych udělal s víc časem“ ponechána** beze změny, má 11 řádků.
+
+**Zjištění po cestě:** tohle byla **třetí** ztráta rozepsané práce tím, že měl Tomáš soubor
+otevřený ve VS Code — editor si držel starší verzi a při uložení přepsal zápis na disku.
+Ztraceny byly tabulka „Kudy číst“ v README, hlavička roadmapy a záznam z 16:41; musely se psát
+znovu. Zavedené opatření: soubory, na kterých se právě pracuje, zůstávají v editoru zavřené.
+
+**Stav repozitáře:** spustitelný, funkčnost beze změny. Necommitnuto: `.gitignore`, `README.md`,
+`docs/roadmap.md`.

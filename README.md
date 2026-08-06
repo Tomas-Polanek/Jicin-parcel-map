@@ -7,6 +7,15 @@ PHP backendem.
 **Rozsah:** 4 katastrální území — **Jičín** (659541), **Popovice u Jičína** (725838),
 **Robousy** (740225), **Valdice** (776530). Dohromady ~24,4 km² a **17 256 parcel**.
 
+### Kudy číst
+
+| kde | co tam je | kdy to otevřít |
+|---|---|---|
+| **tento soubor** | spuštění, struktura, API, krátký zápisník | vždycky — na ostatní se dá vykašlat |
+| [`docs/rozhodnuti.md`](docs/rozhodnuti.md) | všechna rozhodnutí tematicky: co, jaké alternativy, proč, co to stálo | když vás zajímá „proč zrovna takhle" |
+| [`docs/plan.md`](docs/plan.md) | cíle rozebrané po bodech ze zadání a jak poznám, že jsou splněné | když chcete vidět, jak jsem zadání četl |
+| [`docs/roadmap.md`](docs/roadmap.md) | chronologický pracovní log, 29 záznamů | jen jako doklad postupu, není to text ke čtení |
+
 ---
 
 ## Spuštění
@@ -112,123 +121,50 @@ výměra, druh pozemku, způsob využití a katastrální území.
 
 ### Rozhodnutí a proč
 
+Tady je šest rozhodnutí, která nejvíc určila výslednou podobu. Zbytek — všechna rozhodnutí
+i se zamítnutými alternativami a jejich cenou — je tematicky v
+[`docs/rozhodnuti.md`](docs/rozhodnuti.md).
+
 **Data předem stažená, ne živé dotazy na ČÚZK.**
-Zadání označuje tuto volbu za součást úlohy. Živý WFS dotaz při každém pohybu mapy je
-v přímém rozporu s požadavkem na plynulost a přidává závislost na dostupnosti cizího
-serveru. Naměřeno: jedna odpověď WFS pro střed Jičína měla **36 MB XML** na 9 028 parcel.
-Lokální SQLite odpoví na stejný výřez za jednotky milisekund.
+Zadání označuje tuhle volbu za součást úlohy. Naměřeno: jedna odpověď WFS pro střed Jičína měla
+**36 MB XML** na 9 028 parcel. Živý dotaz při každém pohybu mapy je v přímém rozporu s požadavkem
+na plynulost a přidává závislost na tom, jestli cizí server běží. Lokální SQLite odpoví na stejný
+výřez v jednotkách milisekund.
 
-**Hotová databáze je součástí repozitáře.**
-Vědomý kompromis — binární soubor v gitu je jinak antipattern. Zde má 9,1 MB a data jsou
-statická. Přínos: aplikace jde spustit jedním příkazem, bez stahování a bez závislosti na
-tom, jestli ČÚZK zrovna běží. Importní skript v repozitáři zůstává a je plnohodnotnou
-součástí kódu, jen ho není nutné spouštět.
+**SQLite jako soubor, a hotová databáze je součástí repozitáře.**
+Zadání vyžaduje spustitelnost lokálně — SQLite nepotřebuje žádný server k instalaci. Binárka
+v gitu je jinak antipattern; tady má 9,1 MB, data jsou statická a přínos je konkrétní: aplikace
+se spustí jedním příkazem, bez stahování. Importní skript zůstává plnohodnotnou součástí kódu,
+jen ho není nutné spouštět.
 
-**EPSG:4258 (ETRS89) se používá přímo jako WGS84.**
-Předpřipravené sady jsou k dispozici jen v EPSG:5514 (S-JTSK) nebo 4258. Rozdíl mezi ETRS89
-a WGS84 je ve střední Evropě zhruba půl metru až metr — obě soustavy byly totožné v roce
-1989 a evropská deska se od té doby posouvá ~2,5 cm/rok. To je pod přesností samotných
-katastrálních dat a na mapě neviditelné.
-Zamítnuta varianta stáhnout S-JTSK a přepočítat Křovákovo zobrazení vlastními silami:
-desítky řádků trigonometrie nebo cizí závislost, s reálným rizikem tiché chyby, výměnou za
-submetrový zisk, který nikdo nepozná.
-
-**Prostorový index nahrazen čtyřmi sloupci obalového obdélníku.**
-SQLite umí prostorový index R-Tree, ale ve Windows buildu PHP zkompilovaný **není**
-(ověřeno přes `PRAGMA compile_options`). Místo něj má každá parcela `min_lon`, `min_lat`,
-`max_lon`, `max_lat` a obyčejný B-tree index; dotaz na výřez je pak běžný test překryvu
-obdélníků. Při 17 256 řádcích plně dostačuje — dotaz na 5 632 parcel trvá **0,5 ms**.
-R-Tree se vyplatí až o dva řády výš.
-
-**Geometrie je v databázi uložená jako hotový GeoJSON.**
-Převod z GML proběhne jednou při importu, ne při každém požadavku. Mapový endpoint pak jen
-skládá řetězce — sestavení odpovědi se všemi 17 256 prvky trvá **8 ms**. Cena: v databázi
-je prezentační formát a soubor je větší, než by musel být.
-
-**Primární klíč parcely je `nationalCadastralReference`** (např. `659541-1185/3`).
-Nese v sobě kód katastrálního území i parcelní číslo, tedy přesně tu kombinaci, která dává
-v katastru jedinečnost. Ověřeno na vzorku 9 028 parcel: `nationalCadastralReference` je
-jedinečná, **samotné parcelní číslo ne** (4 kolize přes hranice k.ú.). Navíc je dohledatelná
-v `nahlizenidokn.cuzk.cz`, takže obsah API jde ověřit proti oficiálnímu zdroji.
-
-**Při velkém výřezu se parcely nevykreslují.**
-Nad plochou `MAX_BBOX_AREA` (v `src/parcels.php`) vrátí API `"zoom_in": true` a prázdný
-seznam; mapa místo polygonů ukáže výzvu k přiblížení. Hodnota není odhad — je doladěná
-měřením **celého řetězce v prohlížeči**, tedy stažení + `JSON.parse` + vykreslení Leafletem:
+**Nad velkým výřezem se parcely nevykreslují.**
+API vrátí `"zoom_in": true` a mapa vyzve k přiblížení. Limit není odhad — je doladěný měřením
+celého řetězce v prohlížeči (stažení + `JSON.parse` + vykreslení):
 
 | plocha výřezu | šířka | parcel | odpověď | celkem |
 |---|---|---|---|---|
 | 2,0 × 10⁻⁴ | 1,3 km | 1 331 | 0,55 MB | 46 ms |
-| 4,0 × 10⁻⁴ | 1,8 km | 2 523 | 1,05 MB | 85 ms |
 | **1,0 × 10⁻³** | **2,9 km** | **5 669** | **2,36 MB** | **209 ms** ← zvolený limit |
-| 2,0 × 10⁻³ | 4,1 km | 11 121 | 4,58 MB | 350 ms |
 | 1,35 × 10⁻² | 10,7 km | 17 256 | 6,75 MB | 559 ms (celý rozsah) |
 
-Zvoleno `1,0 × 10⁻³`, protože pauza kolem 200 ms po dotažení pohybu ještě splyne s pohybem
-samotným, kdežto půl sekundy už je vidět. Měřeno na rychlém stroji, takže je v hodnotě
-schválně rezerva. Limit je na **ploše**, ne na počtu parcel — díky tomu se sám přizpůsobí
-velikosti okna, ale hustěji zastavěné území by při stejné ploše znamenalo víc polygonů.
-
-Zvažováno i zjednodušování geometrie při menším zoomu (Douglas–Peucker). Zamítnuto: je to
-vlastní geometrický kód navíc, a hranice parcel jsou přitom smysl celé aplikace — raději
-méně parcel přesně než všechny nepřesně.
+Pauza kolem 200 ms po dotažení pohybu ještě splyne s pohybem samotným, půl sekundy už je vidět.
 
 **Leaflet kreslí do canvasu, ne do SVG** (`preferCanvas: true`).
-Ve výchozím nastavení vytvoří Leaflet **jeden SVG uzel na každou parcelu** — při tisících
-polygonů se prohlížeč utopí ve správě DOM. S canvasem jde všechno do jediného plátna:
-vykreslení všech 17 256 parcel trvá **402 ms** místo násobně víc. Cena: jednotlivé polygony
-nejdou stylovat přes CSS, styl se nastavuje jen z JavaScriptu. Pro tuhle aplikaci to nevadí,
-protože styly jsou dva — běžná a vybraná parcela.
+Ve výchozím nastavení vytvoří Leaflet jeden SVG uzel na každou parcelu — při tisících polygonů
+se prohlížeč utopí ve správě DOM. S canvasem jde všechno do jediného plátna: vykreslení všech
+17 256 parcel trvá **402 ms**. Cena: polygony nejdou stylovat přes CSS. Při dvou stylech
+(běžná / vybraná parcela) to nevadí.
 
-**Parcely se načítají po dotažení pohybu, bez cache.**
-Na `moveend` s prodlevou 200 ms; vrstva se zahodí a postaví znovu. Během samotného tažení se
-nenačítá nic — Leaflet už vykreslené vrstvy jen posouvá transformací, takže pohyb je plynulý
-z principu a řeší se až pauza po něm. Rozdělaný dotaz se ruší přes `AbortController`: když
-uživatel popojede dřív, než odpověď dorazí, je odpověď pro výřez, ze kterého už odjel.
-Zamítnuta cache už načtených parcel — pomohla by jen u malého posunu do už viděné oblasti,
-kdežto drahý případ (oddálení, skok jinam) je celý z nových dat, kde cache nemá co nabídnout.
-
-**Zvýraznění vybrané parcely se drží mimo vrstvu.**
-Vrstva parcel se při každém pohybu zahodí a postaví znovu, takže si zvýraznění nemůže pamatovat
-sama — klíč vybrané parcely je v proměnné `selectedRef` a styl se z něj odvozuje při každém
-vykreslení. Díky tomu vybraná parcela zůstane zvýrazněná i po posunu mapy.
+**Čisté PHP bez frameworku, klient vanilla JS s Leafletem.**
+Zadání preferuje čisté PHP; routování je jedna tabulka rout. Na klientovi byl vážně zvažován
+Next.js a zamítnut: přibyl by druhý server vedle PHP, README by začínalo instalací Node, a Leaflet
+se s Reactem pere o vlastnictví DOM — to všechno kvůli 247 řádkům, kde framework nemá co spravovat.
 
 **Vlastník parcely v aplikaci není.**
-Svobodná data ČÚZK (WFS/INSPIRE) jméno vlastníka neobsahují — to je dostupné jen
-v registrovaném/placeném přístupu do ISKN. Zadání říká „zobrazit informace o parcele" a
-zároveň „nejednoznačnosti rozhodni sám a zdůvodni". Rozhodnutí: panel ukazuje to, co je
-reálně dostupné zdarma. Není to opomenutí, ale hranice zdroje dat.
-
-**Jazyková konvence: identifikátory anglicky, všechno čtené jako text česky.**
-Proměnné, funkce, tabulky a sloupce jsou anglicky; komentáře, texty v UI a dokumentace
-česky. Hranice nevede napříč projektem náhodně, ale mezi kódem a souvislým textem.
-Hlavní důvod: čeština je flektivní a identifikátory se neskloňují — `$parcely` je zároveň
-nominativ plurálu i genitiv singuláru, kdežto `$parcels` / `$parcel` tuhle dvojznačnost
-nemá. Anglické názvy sloupců navíc mapují 1:1 na zdrojová pole INSPIRE
-(`cp-ext:landType` → `land_type`), takže nejde o překlad, ale o převzetí názvosloví zdroje.
-
-**Čisté PHP bez frameworku**, jak zadání preferuje. Routování je jedna tabulka rout
-v `public/api/index.php`. Žádná vrstva navíc, žádná abstrakce pro jediného volajícího.
-
-**Klient je vanilla JS s Leafletem, bez frameworku a bez build kroku.**
-Zvažován Next.js. Zamítnut: je to framework nad Reactem běžící na Node.js, takže by k PHP
-backendu přibyl druhý server (a s ním CORS nebo proxy), README by začínalo instalací Node
-a `npm install` — což je přesně ta závislost, kvůli které je v repozitáři hotová databáze —
-a Leaflet se s Reactem pere o vlastnictví DOM. Klientská část má přitom kolem 230 řádků, tedy
-rozsah, kde framework nemá co spravovat.
-
-**Leaflet je stažený v repozitáři** (`public/vendor/`), ne z CDN. Stejný argument jako
-u databáze: aplikace se má spustit jedním příkazem a nezáviset na tom, jestli cizí server
-zrovna běží. Cena: 160 kB cizího kódu v gitu. Mapový podklad **OpenStreetMap** — zdarma,
-bez API klíče, bez rizika, že v den pohovoru dojde limit.
-
-**Info panel je pevný panel vedle mapy, ne bublina nad parcelou.**
-Popup by překryl právě tu parcelu, na kterou uživatel klikl, u delších popisků („Zastavěná
-plocha a nádvoří") by se roztáhl přes kus mapy a zavíral by se při pohybu mapy.
-
-**Chybějící údaj se vypíše jako „neuvedeno", nezamlčí se.**
-Způsob využití chybí zhruba u tří čtvrtin parcel (viz níže). Prázdné místo v panelu by
-vypadalo jako chyba aplikace; explicitní „neuvedeno" říká, že se neví, a že to víme.
+Svobodná data ČÚZK (WFS/INSPIRE) jméno vlastníka neobsahují — je jen v registrovaném/placeném
+přístupu do ISKN. Zadání říká „zobrazit informace o parcele" a zároveň „nejednoznačnosti rozhodni
+sám a zdůvodni". Panel proto ukazuje to, co je reálně dostupné zdarma. Není to opomenutí, ale
+hranice zdroje dat.
 
 ### Co překvapilo
 
